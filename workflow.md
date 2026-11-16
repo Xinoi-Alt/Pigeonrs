@@ -51,6 +51,12 @@ gh issue develop 12 --name S3-02-offer-accept --checkout
 
 **Commits:** mit der Aufgaben-ID vorne, z. B. `S3-02: Offer-Nachricht serialisieren`.
 
+### Commits
+- Jeden Commit mit dem zugehörigen Issue verlinken:
+'''markdown
+"S3-02: Offer-Nachricht serialisieren (#12)"
+'''
+
 ## 4. Pull Request öffnen
 
 **Im PR ausfüllen:**
