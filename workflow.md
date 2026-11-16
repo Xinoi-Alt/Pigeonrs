@@ -50,6 +50,7 @@ gh issue develop 12 --name S3-02-offer-accept --checkout
 ```
 
 **Commits:** mit der Aufgaben-ID vorne, z. B. `S3-02: Offer-Nachricht serialisieren`.
+-> Issue zum Commit linken mit "#<Issue Nummer>", also "#13" in der Commit Message
 
 ### Commits
 - Jeden Commit mit dem zugehörigen Issue verlinken:
