@@ -1,5 +1,6 @@
 use super::*;
 use clap::CommandFactory;
+use clap::error::ErrorKind;
 
 #[test]
 fn cli_definition_is_valid() {
@@ -43,4 +44,13 @@ fn send_args_with_ip() {
             port: 52530,
         }
     );
+}
+
+#[test]
+fn send_peer_and_ip_conflict() {
+    let err = CLI::try_parse_from(["pigeonrs", "send", "foto.jpg", "anna", "--ip", "10.0.0.2"])
+        .err()
+        .expect("sollte fehlschlagen");
+
+    assert_eq!(err.kind(), ErrorKind::ArgumentConflict);
 }
