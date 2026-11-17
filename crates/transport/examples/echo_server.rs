@@ -7,15 +7,15 @@ fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0u8; 1024]; 
 
     loop { 
-    let n = stream.read(&mut buffer).unwrap();
-    if n == 0 {
-        println!("Client disconnected!");
-        break;
-    } else {
-        println!("Read {n} bytes");
+        let n = stream.read(&mut buffer).unwrap();
+        if n == 0 {
+            println!("Client disconnected!");
+            break;
+        } else {
+            stream.write_all(&buffer[..n]).unwrap();
+            println!("Read {n} bytes");
+        }
     }
-}
-
 }
 
 fn main() {
