@@ -19,7 +19,7 @@ enum Commands {
     Doctor,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 struct SendArgs {
     file: PathBuf,
 
@@ -32,10 +32,10 @@ struct SendArgs {
     port: u16,
 }
 // If peer name is not found, an ip adress can be provided with --ip
-#[derive(Args, Clone)]
+#[derive(Args, Clone, Debug)]
 #[group(required = true, multiple = false)]
 struct Target {
-    peer: String,
+    peer: Option<String>,
 
     #[arg(long)]
     ip: Option<IpAddr>,
