@@ -1,0 +1,6 @@
+[package]
+name = "pigeonrs-protocol"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

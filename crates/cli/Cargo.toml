@@ -1,0 +1,10 @@
+[package]
+name = "pigeonrs"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pigeonrs-protocol = { path = "../protocol" }
+pigeonrs-core = { path = "../core" }
+pigeonrs-transport = { path = "../transport" }
+pigeonrs-discovery = { path = "../discovery" }
