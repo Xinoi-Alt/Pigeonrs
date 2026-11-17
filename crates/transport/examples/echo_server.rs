@@ -13,11 +13,14 @@ fn handle_client(mut stream: TcpStream) {
                 break;
             }
             Ok(n) => {
-                stream.write_all(&buffer[..n]).unwrap();
+                if let Err(e) = stream.write_all(&buffer[..n]) {
+                    eprintln!("Write error: {e}");
+                    break;
+                }
                 println!("Read {n} bytes");
             }
             Err(e) => {
-                eprintln!("Error: {e}");
+                eprintln!("Read error: {e}");
                 break;
             }
         }
