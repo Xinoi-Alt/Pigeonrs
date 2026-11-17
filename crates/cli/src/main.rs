@@ -19,7 +19,9 @@ enum Commands {
     Doctor,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, PartialEq)]
+// Without this it shows Peer first in the Usage help
+#[command(override_usage = "pigeonrs send <FILE> <PEER|--ip <IP>> [OPTIONS]")]
 struct SendArgs {
     file: PathBuf,
 
@@ -27,12 +29,12 @@ struct SendArgs {
     #[command(flatten)]
     target: Target,
 
-    // will replace default value with port from 'protocoll' crate
+    // replace with default value with port from 'protocoll' crate
     #[arg(short, long, default_value_t = 52530)]
     port: u16,
 }
 // If peer name is not found, an ip adress can be provided with --ip
-#[derive(Args, Clone, Debug)]
+#[derive(Args, Clone, Debug, PartialEq)]
 #[group(required = true, multiple = false)]
 struct Target {
     peer: Option<String>,
@@ -51,3 +53,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Doctor => subcommands::doctor::run(),
     }
 }
+
+// Testing
+#[cfg(test)]
+mod test_cli;
