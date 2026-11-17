@@ -5,7 +5,7 @@ use std::net::IpAddr;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "pigeon", version = "0.1", about = "Send files locally", long_about = None)]
+#[command(name = "pigeonrs", version = "0.1", about = "Send files locally", long_about = None)]
 struct CLI {
     #[command(subcommand)]
     command: Commands,
