@@ -7,13 +7,19 @@ fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0u8; 1024]; 
 
     loop { 
-        let n = stream.read(&mut buffer).unwrap();
-        if n == 0 {
-            println!("Client disconnected!");
-            break;
-        } else {
-            stream.write_all(&buffer[..n]).unwrap();
-            println!("Read {n} bytes");
+        match stream.read(&mut buffer) {
+            Ok(0) => {
+                println!("Client disconnected!");
+                break;
+            }
+            Ok(n) => {
+                stream.write_all(&buffer[..n]).unwrap();
+                println!("Read {n} bytes");
+            }
+            Err(e) => {
+                eprintln!("Error: {e}");
+                break;
+            }
         }
     }
 }
