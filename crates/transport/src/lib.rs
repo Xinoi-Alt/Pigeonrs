@@ -7,6 +7,13 @@ where
 {
     let listener = TcpListener::bind(addr)?;
 
+    serve_listener(listener, handler)
+}
+
+pub fn serve_listener<F>(listener: TcpListener, handler:F) -> io::Result<()> 
+where
+    F: Fn(TcpStream) -> io::Result<()>,{
+    
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -19,4 +26,4 @@ where
     }
 
     Ok(())
-}
+} 
