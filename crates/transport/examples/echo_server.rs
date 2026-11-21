@@ -1,5 +1,6 @@
+use pigeonrs_transport::serve;
 use std::io::{self, Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpStream;
 
 const PORT: u16 = 52530;
 
@@ -13,4 +14,8 @@ fn echo(mut stream: TcpStream) -> io::Result<()> {
         }
         stream.write_all(&buffer[..n])?;
     }
+}
+
+fn main() -> io::Result<()> {
+    serve(("127.0.0.1", PORT), echo)
 }
