@@ -1,14 +1,9 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use std::io;
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub fn serve<F>(addr: impl ToSocketAddrs, handler: F) -> io::Result<()>
+where
+    F: Fn(TcpStream) -> io::Result<()>,
+{
+    // ...
 }
