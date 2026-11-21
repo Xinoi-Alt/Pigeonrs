@@ -1,29 +1,17 @@
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 
 const PORT: u16 = 52530;
 
-fn handle_client(mut stream: TcpStream) {
+fn echo(mut stream: TcpStream) -> io::Result<()> {
     let mut buffer = [0u8; 1024];
 
     loop {
-        match stream.read(&mut buffer) {
-            Ok(0) => {
-                println!("Client disconnected!");
-                break;
-            }
-            Ok(n) => {
-                if let Err(e) = stream.write_all(&buffer[..n]) {
-                    eprintln!("Write error: {e}");
-                    break;
-                }
-                println!("Read {n} bytes");
-            }
-            Err(e) => {
-                eprintln!("Read error: {e}");
-                break;
-            }
-        }
+        let n = stream.read(&mut buffer)?;
+        if n == 0 {
+            return Ok(());
+        } 
+        stream.write_all(&buffer[..n])?;
     }
 }
 
