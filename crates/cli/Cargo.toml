@@ -9,4 +9,4 @@ pigeonrs-core = { path = "../core" }
 pigeonrs-transport = { path = "../transport" }
 pigeonrs-discovery = { path = "../discovery" }
 clap = { version = "4.6.8", features = ["derive"] }
-anyhow = "1.0.104"
+anyhow.workspace = true
