@@ -1,5 +1,9 @@
 //! Prototyp für die Discovery per UDP Broadcast (S1-05)
 //! Format "PGRS" | tcp_port (u16 BE) | device_name (UTF-8)
+use std::io;
+use std::net::UdpSocket;
+use std::thread;
+use std::time::Duration;
 
 pub const DISCOVERY_PORT: u16 = 52531;
 pub const MAGIC: [u8; 4] = *b"PGRS";
@@ -43,6 +47,27 @@ pub fn decode(packet: &[u8]) -> Option<Announce> {
         tcp_port,
     })
 }
+
+//Schickt ein einzelnes Discovery-Paket and die Adresse 'target'
+pub fn send_announce(socket: &UdpSocket, announce: &Announce, target: &str) -> io::Result<()> {
+    let packet = encode(announce);
+    socket.send_to(&packet, target)?;
+    Ok(())
+}
+
+//Schickt alle 2 Sekunden ein Discovery-Paket per Broadcast (läuft endlos)
+pub fn announce_loop(announce: &Announce, port: u16) -> io::Result<()> {
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    socket.set_broadcast(true)?;
+    let target = format!("255.255.255.255:{port}");
+    loop {
+        if let Err(e) = send_announce(&socket, announce, &target) {
+            eprintln!("Senden fehlgeschlagen: {e}");
+        }
+        thread::sleep(Duration::from_secs(2));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -83,5 +108,21 @@ mod tests {
         let mut packet = encode(&sample());
         packet[6] = 255;
         assert_eq!(decode(&packet), None);
+    }
+    #[test]
+    fn send_announce_arrives() {
+        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        receiver
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        let target = receiver.local_addr().unwrap().to_string();
+
+        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+        send_announce(&sender, &sample(), &target).unwrap();
+
+        let mut buffer = [0; 1024];
+        let (length, _) = receiver.recv_from(&mut buffer).unwrap();
+        let received = &buffer[0..length];
+        assert_eq!(decode(received), Some(sample()));
     }
 }
