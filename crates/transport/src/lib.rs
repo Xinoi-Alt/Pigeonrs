@@ -16,8 +16,9 @@ impl<F> Handler for F where
 pub enum Event {
     Connected { id: u64, peer: SocketAddr },
     Received { id: u64, bytes: usize },
-    // None bei absichtlichen Abbruch
+    // None bei absichtlichem Ende
     Disconnected { id: u64, error: Option<String> },
+    AcceptFailed {error: String}
 }
 // ID for Threads
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
@@ -40,7 +41,9 @@ pub fn serve_listener<F: Handler>(listener: TcpListener, handler: F, channel: Se
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => spawn_worker(next_id(), stream, Arc::clone(&handler), channel.clone()),
-            Err(e) => eprintln!("Connection failed: {e}"),
+            Err(e) => {
+                let _ = channel.send(Event::AcceptFailed {error: e.to_string()});
+            },
         }
     }
 
@@ -50,8 +53,9 @@ pub fn serve_listener<F: Handler>(listener: TcpListener, handler: F, channel: Se
 // spawn thread for every Connection
 fn spawn_worker<F: Handler>(id: u64, stream: TcpStream, handler: Arc<F>, channel: Sender<Event>) {
     thread::spawn(move || {
-        let peer = stream.peer_addr().unwrap(); // only for Debug! Change later
-        let _ = channel.send(Event::Connected{id, peer});
+        if let Ok(peer) = stream.peer_addr() {
+            let _ = channel.send(Event::Connected{id, peer});
+        }
         let result = handler(id, stream, &channel);
         let _ = channel.send(Event::Disconnected{
             id,
