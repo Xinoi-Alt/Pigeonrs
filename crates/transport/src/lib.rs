@@ -1,16 +1,21 @@
+mod error;
+pub use error::{Result, TransportError};
+
 use std::io;
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 
-pub fn serve<F>(addr: impl ToSocketAddrs, handler: F) -> io::Result<()>
+pub fn serve<F>(addr: impl ToSocketAddrs + std::fmt::Debug, handler: F) -> Result<()>
 where
     F: Fn(TcpStream) -> io::Result<()>,
 {
-    let listener = TcpListener::bind(addr)?;
+    let address = format!("{addr:?}");
+    let listener =
+        TcpListener::bind(addr).map_err(|e| TransportError::Bind { address, source: e })?;
 
     serve_listener(listener, handler)
 }
 
-pub fn serve_listener<F>(listener: TcpListener, handler: F) -> io::Result<()>
+pub fn serve_listener<F>(listener: TcpListener, handler: F) -> Result<()>
 where
     F: Fn(TcpStream) -> io::Result<()>,
 {
@@ -18,6 +23,7 @@ where
         match stream {
             Ok(stream) => {
                 if let Err(e) = handler(stream) {
+                    // TODO: replace eprint with proper logging
                     eprintln!("Handler error: {e}");
                 }
             }
@@ -57,5 +63,15 @@ mod tests {
         client.read_exact(&mut buffer).unwrap();
 
         assert_eq!(&buffer, b"hello");
+    }
+
+    #[test]
+    fn bind_fails_when_port_is_taken() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let result = serve(addr, |_| Ok(()));
+
+        assert!(matches!(result, Err(TransportError::Bind { .. })));
     }
 }

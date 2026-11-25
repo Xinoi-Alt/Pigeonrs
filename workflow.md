@@ -90,6 +90,19 @@ Closes #12
 
 ## 5. Review und Merge
 
+## Fehlerbehandlung
+
+- **Libraries** (`protocol`, `transport`, `core`, `discovery`): eigener Fehlertyp mit `thiserror`
+  in `src/error.rs`, plus `pub type Result<T>`. Beides in `lib.rs` per `pub use` freigeben.
+  Vorbild: `crates/transport/src/error.rs`.
+- **CLI:** `anyhow::Result`, Kontext mit `.context("...")` anhängen.
+- Kein `unwrap()`/`expect()`/`panic!` im normalen Code, nur in Tests.
+- Fehlermeldungen auf Englisch, klein geschrieben, ohne Punkt am Ende
+  (z. B. `"failed to bind to {address}"`).
+- Bei Fehlern aus anderen Libraries den ursprünglichen Fehler im Feld `source` mitgeben.
+- Neue Dependencies zentral in der Root-`Cargo.toml` unter `[workspace.dependencies]`
+  eintragen, in den Crates nur `name.workspace = true`.
+
 ## Meilensteine
 
 | Meilenstein | Fällig |
