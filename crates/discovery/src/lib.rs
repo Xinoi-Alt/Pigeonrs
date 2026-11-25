@@ -18,12 +18,17 @@ pub struct Announce {
 }
 
 //Baut die Bytes für ein Discovery Paket
-pub fn encode(announce: &Announce) -> Vec<u8> {
+pub fn encode(announce: &Announce) -> Option<Vec<u8>> {
+    let name_len = announce.device_name.len();
+    if name_len == 0 || name_len > MAX_NAME_LEN {
+        return None;
+    }
+
     let mut packet = Vec::with_capacity(MAGIC.len() + 2 + announce.device_name.len());
     packet.extend_from_slice(&MAGIC);
     packet.extend_from_slice(&announce.tcp_port.to_be_bytes());
     packet.extend_from_slice(announce.device_name.as_bytes());
-    packet
+    Some(packet)
 }
 
 //Prüft ein empfangenes Paket
@@ -51,13 +56,28 @@ pub fn decode(packet: &[u8]) -> Option<Announce> {
 
 //Schickt ein einzelnes Discovery-Paket an die Adresse 'target'
 pub fn send_announce(socket: &UdpSocket, announce: &Announce, target: &str) -> io::Result<()> {
-    let packet = encode(announce);
+    let packet = match encode(announce) {
+        Some(p) => p,
+        None => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "device name must be 1 to 64 bytes",
+            ));
+        }
+    };
     socket.send_to(&packet, target)?;
     Ok(())
 }
 
 //Schickt alle 2 Sekunden ein Discovery-Paket per Broadcast (läuft endlos)
 pub fn announce_loop(announce: &Announce, port: u16) -> io::Result<()> {
+    if encode(announce).is_none() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "device name must be 1 to 64 bytes",
+        ));
+    }
+
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.set_broadcast(true)?;
     let target = format!("255.255.255.255:{port}");
@@ -72,7 +92,7 @@ pub fn announce_loop(announce: &Announce, port: u16) -> io::Result<()> {
 //Wartet auf ein gültiges Discovery Paket. Ungültige Pakete werden übersprungen.
 //Gibt das Announce und die Adresse des Absenders zurück.
 pub fn receive_announce(socket: &UdpSocket) -> io::Result<(Announce, SocketAddr)> {
-    let mut buffer = [0; 1024];
+    let mut buffer = [0u8; 65536];
     loop {
         let (length, sender) = socket.recv_from(&mut buffer)?;
         let received = &buffer[0..length];
@@ -110,12 +130,12 @@ mod tests {
     }
     #[test]
     fn roundtrip() {
-        let packet = encode(&sample());
+        let packet = encode(&sample()).unwrap();
         assert_eq!(decode(&packet), Some(sample()));
     }
     #[test]
     fn rejects_wrong_magic() {
-        let mut packet = encode(&sample());
+        let mut packet = encode(&sample()).unwrap();
         packet[0] = b'X';
         assert_eq!(decode(&packet), None);
     }
@@ -130,12 +150,11 @@ mod tests {
             device_name: "a".repeat(65),
             tcp_port: 52530,
         };
-        let packet = encode(&announce);
-        assert_eq!(decode(&packet), None);
+        assert_eq!(encode(&announce), None);
     }
     #[test]
     fn rejects_invalid_text() {
-        let mut packet = encode(&sample());
+        let mut packet = encode(&sample()).unwrap();
         packet[6] = 255;
         assert_eq!(decode(&packet), None);
     }
