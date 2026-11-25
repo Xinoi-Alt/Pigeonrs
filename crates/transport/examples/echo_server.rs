@@ -16,6 +16,6 @@ fn echo(mut stream: TcpStream) -> io::Result<()> {
     }
 }
 
-fn main() -> io::Result<()> {
+fn main() -> pigeonrs_transport::Result<()> {
     serve(("127.0.0.1", PORT), echo)
 }
