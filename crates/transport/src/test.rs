@@ -1,7 +1,7 @@
 use super::*;
 use std::io::{Read, Write};
 
-fn echo(mut stream: TcpStream) -> io::Result<()> {
+fn echo(mut stream: TcpStream, channel: &Sender<String>) -> io::Result<()> {
     let mut buffer = [0u8; 1024];
 
     loop {
