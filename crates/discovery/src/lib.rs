@@ -1,6 +1,7 @@
 //! Prototyp für die Discovery per UDP Broadcast (S1-05)
 //! Format "PGRS" | tcp_port (u16 BE) | device_name (UTF-8)
 use std::io;
+use std::net::SocketAddr;
 use std::net::UdpSocket;
 use std::thread;
 use std::time::Duration;
@@ -48,7 +49,7 @@ pub fn decode(packet: &[u8]) -> Option<Announce> {
     })
 }
 
-//Schickt ein einzelnes Discovery-Paket and die Adresse 'target'
+//Schickt ein einzelnes Discovery-Paket an die Adresse 'target'
 pub fn send_announce(socket: &UdpSocket, announce: &Announce, target: &str) -> io::Result<()> {
     let packet = encode(announce);
     socket.send_to(&packet, target)?;
@@ -65,6 +66,35 @@ pub fn announce_loop(announce: &Announce, port: u16) -> io::Result<()> {
             eprintln!("Senden fehlgeschlagen: {e}");
         }
         thread::sleep(Duration::from_secs(2));
+    }
+}
+
+//Wartet auf ein gültiges Discovery Paket. Ungültige Pakete werden übersprungen.
+//Gibt das Announce und die Adresse des Absenders zurück.
+pub fn receive_announce(socket: &UdpSocket) -> io::Result<(Announce, SocketAddr)> {
+    let mut buffer = [0; 1024];
+    loop {
+        let (length, sender) = socket.recv_from(&mut buffer)?;
+        let received = &buffer[0..length];
+        if let Some(announce) = decode(received) {
+            return Ok((announce, sender));
+        }
+    }
+}
+
+pub fn listen_loop(port: u16) -> io::Result<()> {
+    let address = format!("0.0.0.0:{port}");
+    let socket = UdpSocket::bind(&address)?;
+    println!("Lausche auf {address} ...");
+
+    loop {
+        let (announce, sender) = receive_announce(&socket)?;
+        println!(
+            "Gefunden: {} auf {}:{}",
+            announce.device_name,
+            sender.ip(),
+            announce.tcp_port
+        );
     }
 }
 
@@ -124,5 +154,21 @@ mod tests {
         let (length, _) = receiver.recv_from(&mut buffer).unwrap();
         let received = &buffer[0..length];
         assert_eq!(decode(received), Some(sample()));
+    }
+
+    #[test]
+    fn receive_announce_skips_invalid_packets() {
+        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        receiver
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        let target = receiver.local_addr().unwrap().to_string();
+
+        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+        sender.send_to(&[1, 2, 3], &target).unwrap();
+        send_announce(&sender, &sample(), &target).unwrap();
+
+        let (announce, _) = receive_announce(&receiver).unwrap();
+        assert_eq!(announce, sample());
     }
 }
