@@ -14,7 +14,7 @@ fn echo(id: u64, mut stream: TcpStream, channel: &Sender<Event>) -> io::Result<(
         if bytes == 0 {
             return Ok(());
         }
-        let _ = channel.send(Event::Received{id, bytes});
+        let _ = channel.send(Event::Received { id, bytes });
         stream.write_all(&buffer[..bytes])?;
     }
 }
