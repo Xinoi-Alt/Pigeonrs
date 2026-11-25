@@ -64,4 +64,15 @@ mod tests {
 
         assert_eq!(&buffer, b"hello");
     }
+
+    #[test]
+    fn bind_fails_when_port_is_taken() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        let result = serve(addr, |_| Ok(()));
+
+        assert!(matches!(result, Err(TransportError::Bind { .. })));
+
+    }
 }
