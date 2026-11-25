@@ -1,16 +1,16 @@
 mod error;
-pub use error::{TransportError, Result};
+pub use error::{Result, TransportError};
 
 use std::io;
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
-
 
 pub fn serve<F>(addr: impl ToSocketAddrs + std::fmt::Debug, handler: F) -> Result<()>
 where
     F: Fn(TcpStream) -> io::Result<()>,
 {
     let address = format!("{addr:?}");
-    let listener= TcpListener::bind(addr).map_err(|e| TransportError::Bind {address, source: e})?;
+    let listener =
+        TcpListener::bind(addr).map_err(|e| TransportError::Bind { address, source: e })?;
 
     serve_listener(listener, handler)
 }
@@ -73,6 +73,5 @@ mod tests {
         let result = serve(addr, |_| Ok(()));
 
         assert!(matches!(result, Err(TransportError::Bind { .. })));
-
     }
 }
