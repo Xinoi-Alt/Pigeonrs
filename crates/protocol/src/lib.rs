@@ -1,6 +1,4 @@
 mod error;
-use std::char::UNICODE_VERSION;
-
 pub use error::{ProtocolError, Result};
 
 use serde::{Deserialize, Serialize};
