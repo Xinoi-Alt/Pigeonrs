@@ -28,3 +28,14 @@ pub enum Message {
     ///Antwort auf Ping
     Pong,
 }
+
+impl Message {
+    ///Wandelt die Nachricht mit postcard in Bytes um
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        postcard::to_allocvec(self).map_err(|e| ProtocolError::InvalidMessage(e.to_string()))
+    }
+    ///Liest eine Nachricht aus Bytes ; Kaputte Byzes ergeben Fehler statt einer panic
+    pub fn from_bytes(bytes: &[u8]) -> Result<Message> {
+        postcard::from_bytes(bytes).map_err(|e| ProtocolError::InvalidMessage(e.to_string()))
+    }
+}
