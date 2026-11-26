@@ -20,4 +20,10 @@ pub enum Message {
         chunk_number: u32,
         chunk_data: Vec<u8>,
     },
+    Nack {
+        chunk_number: u32,
+    },
+    Done,
+    Ping,
+    Pong,
 }
