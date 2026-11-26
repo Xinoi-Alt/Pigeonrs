@@ -7,4 +7,6 @@ use serde::{Deserialize, Serialize};
 pub enum Message {
     Hello { version: u8 },
     Offer { file_name: String, file_size: u64 },
+    Accept,
+    Reject { reason: String },
 }
