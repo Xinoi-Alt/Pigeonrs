@@ -1,17 +1,10 @@
 mod error;
 pub use error::{ProtocolError, Result};
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use serde::{Deserialize, Serialize};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub enum Message {
+    Hello { version: u8 },
 }
