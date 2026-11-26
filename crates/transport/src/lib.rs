@@ -1,77 +1,83 @@
 mod error;
 pub use error::{Result, TransportError};
 
-use std::io;
-use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::Sender;
+use std::{io, thread};
 
-pub fn serve<F>(addr: impl ToSocketAddrs + std::fmt::Debug, handler: F) -> Result<()>
-where
-    F: Fn(TcpStream) -> io::Result<()>,
+pub trait Handler:
+    Fn(u64, TcpStream, &Sender<Event>) -> io::Result<()> + Send + Sync + 'static
 {
+}
+impl<F> Handler for F where
+    F: Fn(u64, TcpStream, &Sender<Event>) -> io::Result<()> + Send + Sync + 'static
+{
+}
+
+// Events for Channel
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Event {
+    Connected { id: u64, peer: SocketAddr },
+    Received { id: u64, bytes: usize },
+    // None bei absichtlichem Ende
+    Disconnected { id: u64, error: Option<String> },
+    AcceptFailed { error: String },
+}
+// ID for Threads
+static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+fn next_id() -> u64 {
+    NEXT_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+pub fn serve<F: Handler>(
+    addr: impl ToSocketAddrs + std::fmt::Debug,
+    handler: F,
+    channel: Sender<Event>,
+) -> Result<()> {
     let address = format!("{addr:?}");
     let listener =
         TcpListener::bind(addr).map_err(|e| TransportError::Bind { address, source: e })?;
 
-    serve_listener(listener, handler)
+    serve_listener(listener, handler, channel)
 }
 
-pub fn serve_listener<F>(listener: TcpListener, handler: F) -> Result<()>
-where
-    F: Fn(TcpStream) -> io::Result<()>,
-{
+pub fn serve_listener<F: Handler>(
+    listener: TcpListener,
+    handler: F,
+    channel: Sender<Event>,
+) -> Result<()> {
+    let handler = Arc::new(handler);
+
+    // listen for streams and spawn a worker thread for each
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
-                if let Err(e) = handler(stream) {
-                    // TODO: replace eprint with proper logging
-                    eprintln!("Handler error: {e}");
-                }
+            Ok(stream) => spawn_worker(next_id(), stream, Arc::clone(&handler), channel.clone()),
+            Err(e) => {
+                let _ = channel.send(Event::AcceptFailed {
+                    error: e.to_string(),
+                });
             }
-            Err(e) => eprintln!("Connection failed: {e}"),
         }
     }
 
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::{Read, Write};
-
-    fn echo(mut stream: TcpStream) -> io::Result<()> {
-        let mut buffer = [0u8; 1024];
-
-        loop {
-            let n = stream.read(&mut buffer)?;
-            if n == 0 {
-                return Ok(());
-            }
-            stream.write_all(&buffer[..n])?;
+// spawn thread for every Connection
+fn spawn_worker<F: Handler>(id: u64, stream: TcpStream, handler: Arc<F>, channel: Sender<Event>) {
+    thread::spawn(move || {
+        if let Ok(peer) = stream.peer_addr() {
+            let _ = channel.send(Event::Connected { id, peer });
         }
-    }
-    #[test]
-    fn echo_roundtrip() {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = listener.local_addr().unwrap();
-
-        std::thread::spawn(move || serve_listener(listener, echo));
-
-        let mut client = TcpStream::connect(addr).unwrap();
-        client.write_all(b"hello").unwrap();
-        let mut buffer = [0u8; 5];
-        client.read_exact(&mut buffer).unwrap();
-
-        assert_eq!(&buffer, b"hello");
-    }
-
-    #[test]
-    fn bind_fails_when_port_is_taken() {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let addr = listener.local_addr().unwrap();
-
-        let result = serve(addr, |_| Ok(()));
-
-        assert!(matches!(result, Err(TransportError::Bind { .. })));
-    }
+        let result = handler(id, stream, &channel);
+        let _ = channel.send(Event::Disconnected {
+            id,
+            error: result.err().map(|e| e.to_string()),
+        });
+    });
 }
+
+#[cfg(test)]
+mod test;
