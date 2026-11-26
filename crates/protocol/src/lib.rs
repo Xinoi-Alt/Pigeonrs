@@ -39,3 +39,42 @@ impl Message {
         postcard::from_bytes(bytes).map_err(|e| ProtocolError::InvalidMessage(e.to_string()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn roundtrip(msg: Message) {
+        let bytes = msg.to_bytes().unwrap();
+        let back = Message::from_bytes(&bytes).unwrap();
+        assert_eq!(msg, back);
+    }
+
+    #[test]
+    fn roundtrip_all_messages() {
+        roundtrip(Message::Hello {
+            version: PROTOCOL_VERSION,
+        });
+        roundtrip(Message::Offer {
+            file_name: "urlaub.jpg".to_string(),
+            file_size: 5_000_000_000,
+        });
+        roundtrip(Message::Accept);
+        roundtrip(Message::Reject {
+            reason: "Nicht genug Speicherplatz".to_string(),
+        });
+        roundtrip(Message::Chunk {
+            chunk_number: 2,
+            chunk_data: vec![0, 1, 2, 255],
+        });
+        roundtrip(Message::Nack { chunk_number: 2 });
+        roundtrip(Message::Done);
+        roundtrip(Message::Ping);
+        roundtrip(Message::Pong);
+    }
+    #[test]
+    fn invalid_bytes_give_error() {
+        let result = Message::from_bytes(&[255, 255, 255]);
+        assert!(result.is_err());
+    }
+}
