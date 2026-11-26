@@ -1,6 +1,4 @@
 mod error;
-use std::vec;
-
 pub use error::{ProtocolError, Result};
 
 use serde::{Deserialize, Serialize};
